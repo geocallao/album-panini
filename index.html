@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Álbum Panini FIFA 2026 - Control de Figuritas</title>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            margin: 0;
+            padding: 15px;
+            color: #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+        h1 {
+            text-align: center;
+            color: #ffd700;
+            text-shadow: 2px 2px 0 #2a5298;
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 10px 0;
+            padding: 8px;
+            background: #f0f2f5;
+            border-radius: 50px;
+        }
+        button {
+            background: #2a5298;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            touch-action: manipulation;
+        }
+        button:active {
+            transform: scale(0.97);
+        }
+        button.report-btn {
+            background: #ff9800;
+            color: #1e3c72;
+        }
+        button.export-json-btn {
+            background: #4caf50;
+        }
+        button.export-txt-btn {
+            background: #2196f3;
+        }
+        button.import-btn {
+            background: #9c27b0;
+        }
+        .stats {
+            text-align: center;
+            padding: 8px;
+            font-weight: bold;
+            background: #e8f0fe;
+            border-radius: 20px;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+        .album-table-wrapper {
+            flex: 1;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            min-height: 0;
+        }
+        table {
+            border-collapse: collapse;
+            font-size: 12px;
+            min-width: 800px;
+        }
+        th {
+            background: #ffd700;
+            color: #1e3c72;
+            padding: 8px 4px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border: 1px solid #ddd;
+        }
+        td {
+            border: 1px solid #ddd;
+            text-align: center;
+            padding: 6px 3px;
+            background-color: white;
+            transition: background 0.2s;
+        }
+        .country-row td:first-child {
+            background: #f8f9fa;
+            font-weight: bold;
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background-color: #ffd;
+            z-index: 5;
+        }
+        .sticker-cell {
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+            touch-action: manipulation;
+            min-width: 40px;
+        }
+        .sticker-cell:active {
+            background-color: #ccc;
+        }
+        .empty {
+            background-color: #fafafa;
+            color: #aaa;
+        }
+        .have {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }
+        .duplicate {
+            background-color: #ffecb3;
+            color: #e65100;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            font-size: 11px;
+        }
+        .legend span {
+            display: inline-block;
+            width: 25px;
+            height: 25px;
+            border-radius: 8px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        .footer {
+            text-align: center;
+            font-size: 10px;
+            margin-top: 8px;
+            color: #666;
+        }
+        .warning-note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 6px 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #856404;
+        }
+        .status {
+            text-align: center;
+            padding: 6px;
+            font-weight: bold;
+            background: #e8f0fe;
+            border-radius: 20px;
+            margin: 8px 0;
+            font-size: 11px;
+        }
+        
+        /* Modal para el reporte */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            overflow: auto;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ffd700;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .modal-header h3 {
+            margin: 0;
+            color: #1e3c72;
+        }
+        .close-modal {
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+        }
+        .report-content {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .modal-buttons button {
+            flex: 1;
+            font-size: 12px;
+            padding: 8px;
+        }
+        .copy-btn {
+            background: #4caf50;
+        }
+        .image-btn {
+            background: #ff9800;
+        }
+        
+        .album-table-wrapper table th:first-child,
+        .album-table-wrapper table td:first-child {
+            position: sticky;
+            left: 0;
+            background-color: #ffd700;
+        }
+        .album-table-wrapper table td:first-child {
+            background-color: #fff3cd;
+        }
+        
+        @media (max-width: 700px) {
+            body {
+                padding: 8px;
+            }
+            .container {
+                padding: 10px;
+            }
+            button {
+                padding: 8px 12px;
+                font-size: 0.7rem;
+            }
+            td, th {
+                padding: 4px 2px;
+                font-size: 10px;
+            }
+            .sticker-cell {
+                font-size: 1rem;
+                min-width: 30px;
+            }
+            .country-row td:first-child {
+                font-size: 9px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>⚽ Álbum Panini FIFA 2026 📸</h1>
+    
+    <div class="toolbar">
+        <button id="reportBtn" class="report-btn">📊 Reporte Repetidas</button>
+        <button id="exportTxtBtn" class="export-txt-btn">📄 Exportar TXT</button>
+        <button id="exportJsonBtn" class="export-json-btn">💾 Exportar JSON</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" />
+        <button id="importDataBtn" class="import-btn">📂 Importar Datos</button>
+    </div>
+    
+    <div class="stats" id="globalStats">
+        Cargando...
+    </div>
+    
+    <div class="warning-note">
+        ⚠️ Datos automáticos. Exporta TXT para ver tu progreso | JSON para respaldos<br>
+        📊 48 países | 20 c/u | 960 total
+    </div>
+    
+    <div class="status" id="statusMsg">
+        💡 Toca casilla: Vacío → Tengo → Repetida
+    </div>
+    
+    <div class="album-table-wrapper" id="albumTableWrapper">
+        <div id="albumTableContainer">
+            <!-- Tabla se genera acá -->
+        </div>
+    </div>
+    
+    <div class="legend">
+        <div><span style="background:#fafafa; border:1px solid #ccc;"></span> Vacío</div>
+        <div><span style="background:#c8e6c9;"></span> ✅ Tengo</div>
+        <div><span style="background:#ffecb3;"></span> 🔁 Repetida</div>
+    </div>
+    <div class="footer">
+        ✅ Scroll horizontal + vertical | 48 países | 12 grupos A-L
+    </div>
+</div>
+
+<!-- Modal para el reporte -->
+<div id="reportModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📋 Reporte de Figuritas Repetidas</h3>
+            <button class="close-modal" id="closeModalBtn">✕</button>
+        </div>
+        <div id="reportText" class="report-content">
+            Cargando...
+        </div>
+        <div class="modal-buttons">
+            <button id="copyReportBtn" class="copy-btn">📋 Copiar Texto</button>
+            <button id="exportImageBtn" class="image-btn">🖼️ Exportar como Imagen</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // 48 países - Grupos A-L (4 por grupo)
+    // --------------------------------------------------------------
+    const paisesDataRaw = [
+        { nombre: "MEXICO", grupo: "A" },
+        { nombre: "SUDAFRICA", grupo: "A" },
+        { nombre: "KOREA", grupo: "A" },
+        { nombre: "REP. CHECA", grupo: "A" },
+        { nombre: "CANADA", grupo: "B" },
+        { nombre: "BOSNIA HERZEGOVINA", grupo: "B" },
+        { nombre: "QATAR", grupo: "B" },
+        { nombre: "SUIZA", grupo: "B" },
+        { nombre: "BRASIL", grupo: "C" },
+        { nombre: "MARRUECOS", grupo: "C" },
+        { nombre: "HAITI", grupo: "C" },
+        { nombre: "ESCOCIA", grupo: "C" },
+        { nombre: "USA", grupo: "D" },
+        { nombre: "PARAGUAY", grupo: "D" },
+        { nombre: "AUSTRALIA", grupo: "D" },
+        { nombre: "TURQUIA", grupo: "D" },
+        { nombre: "GERMANY", grupo: "E" },
+        { nombre: "CURACAO", grupo: "E" },
+        { nombre: "COSTA DE MARFIL", grupo: "E" },
+        { nombre: "ECUADOR", grupo: "E" },
+        { nombre: "NETHERLANDS", grupo: "F" },
+        { nombre: "JAPON", grupo: "F" },
+        { nombre: "SUECIA", grupo: "F" },
+        { nombre: "TUNEZ", grupo: "F" },
+        { nombre: "BELGICA", grupo: "G" },
+        { nombre: "EGIPTO", grupo: "G" },
+        { nombre: "IRAN", grupo: "G" },
+        { nombre: "NUEVA ZELANDA", grupo: "G" },
+        { nombre: "SPAIN", grupo: "H" },
+        { nombre: "CABO VERDE", grupo: "H" },
+        { nombre: "ARABIA SAUDI", grupo: "H" },
+        { nombre: "URUGUAY", grupo: "H" },
+        { nombre: "FRANCIA", grupo: "I" },
+        { nombre: "SENEGAL", grupo: "I" },
+        { nombre: "IRAQ", grupo: "I" },
+        { nombre: "NORUEGA", grupo: "I" },
+        { nombre: "ARGENTINA", grupo: "J" },
+        { nombre: "ALGERIA", grupo: "J" },
+        { nombre: "AUSTRIA", grupo: "J" },
+        { nombre: "JORDANIA", grupo: "J" },
+        { nombre: "PORTUGAL", grupo: "K" },
+        { nombre: "CONGO", grupo: "K" },
+        { nombre: "UZBEKISTAN", grupo: "K" },
+        { nombre: "COLOMBIA", grupo: "K" },
+        { nombre: "ENGLAND", grupo: "L" },
+        { nombre: "CROACIA", grupo: "L" },
+        { nombre: "GHANA", grupo: "L" },
+        { nombre: "PANAMA", grupo: "L" }
+    ];
+
+    let stickersState = {};
+
+    function initEmptyStates() {
+        for (let pais of paisesDataRaw) {
+            stickersState[pais.nombre] = Array(20).fill(0);
+        }
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem("panini2026_data_v2");
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                let valid = true;
+                for (let pais of paisesDataRaw) {
+                    if (!parsed[pais.nombre] || !Array.isArray(parsed[pais.nombre]) || parsed[pais.nombre].length !== 20) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) {
+                    stickersState = parsed;
+                } else {
+                    initEmptyStates();
+                }
+            } catch(e) { 
+                initEmptyStates();
+            }
+        } else {
+            initEmptyStates();
+        }
+        updateGlobalStats();
+    }
+
+    function saveToLocalStorage() {
+        localStorage.setItem("panini2026_data_v2", JSON.stringify(stickersState));
+        updateGlobalStats();
+    }
+    
+    function updateGlobalStats() {
+        let totalTenidas = 0;
+        let totalRepetidas = 0;
+        let totalFaltantes = 0;
+        
+        for (let pais of paisesDataRaw) {
+            const stickers = stickersState[pais.nombre];
+            totalTenidas += stickers.filter(v => v === 1).length;
+            totalRepetidas += stickers.filter(v => v === 2).length;
+            totalFaltantes += stickers.filter(v => v === 0).length;
+        }
+        
+        const statsDiv = document.getElementById("globalStats");
+        if (statsDiv) {
+            statsDiv.innerHTML = `📊 ✅ ${totalTenidas} tengo | 🔁 ${totalRepetidas} repetidas | ⬜ ${totalFaltantes} faltan | 🎯 Total: ${totalTenidas + totalRepetidas + totalFaltantes}`;
+        }
+    }
+
+    // Generar contenido del reporte
+    function generateReportContent() {
+        let report = "========================================\n";
+        report += "📋 REPORTE DE FIGURITAS REPETIDAS\n";
+        report += `📅 Fecha: ${new Date().toLocaleString()}\n`;
+        report += "========================================\n\n";
+        
+        let totalRepe = 0;
+        let hasAny = false;
+        let reportDetails = [];
+        
+        for (let pais of paisesDataRaw) {
+            const stickers = stickersState[pais.nombre];
+            const repetidos = [];
+            for (let i = 0; i < 20; i++) {
+                if (stickers[i] === 2) repetidos.push(i+1);
+            }
+            if (repetidos.length > 0) {
+                hasAny = true;
+                totalRepe += repetidos.length;
+                reportDetails.push(`🏷️ ${pais.nombre} (Grupo ${pais.grupo})\n   🔁 ${repetidos.length} repetida(s) - Números: ${repetidos.join(", ")}`);
+            }
+        }
+        
+        if (!hasAny) {
+            report += "✨ ¡FELICITACIONES! ✨\n";
+            report += "No tienes ninguna figurita repetida en tu colección.\n";
+            report += "💪 ¡Sigue así, eres un gran coleccionista!\n";
+        } else {
+            report += reportDetails.join("\n\n");
+            report += "\n\n========================================\n";
+            report += `📊 TOTAL DE FIGURITAS REPETIDAS: ${totalRepe}\n`;
+            report += `📈 Total de países con repetidas: ${reportDetails.length}\n`;
+            report += "========================================\n";
+        }
+        
+        report += `\n📊 Progreso actual:\n`;
+        let totalTenidas = 0;
+        let totalStickers = paisesDataRaw.length * 20;
+        for (let pais of paisesDataRaw) {
+            totalTenidas += stickersState[pais.nombre].filter(v => v === 1).length;
+        }
+        let porcentaje = Math.round((totalTenidas / totalStickers) * 100);
+        report += `✅ Figuritas que tienes: ${totalTenidas} de ${totalStickers} (${porcentaje}%)\n`;
+        
+        return report;
+    }
+
+    // Mostrar modal con reporte
+    function showReportModal() {
+        const modal = document.getElementById("reportModal");
+        const reportDiv = document.getElementById("reportText");
+        const content = generateReportContent();
+        reportDiv.textContent = content;
+        modal.style.display = "block";
+    }
+
+    // Copiar reporte al portapapeles
+    function copyReportToClipboard() {
+        const reportText = document.getElementById("reportText").textContent;
+        navigator.clipboard.writeText(reportText).then(() => {
+            alert("✅ Reporte copiado al portapapeles. Puedes pegarlo donde quieras.");
+        }).catch(() => {
+            alert("❌ No se pudo copiar. Selecciona el texto manualmente.");
+        });
+    }
+
+    // Exportar reporte como imagen
+    async function exportReportAsImage() {
+        const reportDiv = document.getElementById("reportText");
+        const originalHtml = reportDiv.innerHTML;
+        
+        // Crear un contenedor temporal para la imagen con mejor estilo
+        const tempDiv = document.createElement('div');
+        tempDiv.style.cssText = `
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-width: 600px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        `;
+        tempDiv.textContent = reportDiv.textContent;
+        document.body.appendChild(tempDiv);
+        
+        try {
+            const canvas = await html2canvas(tempDiv, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                logging: false
+            });
+            const link = document.createElement('a');
+            link.download = `reporte_repetidas_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            alert("✅ Imagen del reporte exportada correctamente.");
+        } catch (error) {
+            console.error("Error al generar imagen:", error);
+            alert("❌ Error al generar la imagen. Intenta de nuevo.");
+        } finally {
+            document.body.removeChild(tempDiv);
+        }
+    }
+
+    // Exportar a TXT legible
+    function exportToTxt() {
+        let txtContent = "========================================\n";
+        txtContent += "ÁLBUM PANINI FIFA WORLD CUP 2026\n";
+        txtContent += `Fecha: ${new Date().toLocaleString()}\n`;
+        txtContent += `Total países: ${paisesDataRaw.length}\n`;
+        txtContent += `Figuritas por país: 20\n`;
+        txtContent += `Total figuritas: ${paisesDataRaw.length * 20}\n`;
+        txtContent += "========================================\n\n";
+        txtContent += "LEYENDA:\n";
+        txtContent += "  [ ] = Vacío (falta)\n";
+        txtContent += "  [T] = Tengo\n";
+        txtContent += "  [R] = Repetida\n\n";
+        txtContent += "========================================\n";
+        txtContent += "LISTADO DE FIGURITAS POR PAÍS\n";
+        txtContent += "========================================\n\n";
+        
+        let totalTenidasGlobal = 0;
+        let totalRepetidasGlobal = 0;
+        
+        for (let pais of paisesDataRaw) {
+            const stickers = stickersState[pais.nombre];
+            const tenidas = stickers.filter(v => v === 1).length;
+            const repetidas = stickers.filter(v => v === 
