@@ -598,4 +598,284 @@
         for (let pais of paisesDataRaw) {
             const stickers = stickersState[pais.nombre];
             const tenidas = stickers.filter(v => v === 1).length;
-            const repetidas = stickers.filter(v => v === 
+            const repetidas = stickers.filter(v => v === 2).length;
+            const faltantes = stickers.filter(v => v === 0).length;
+            
+            totalTenidasGlobal += tenidas;
+            totalRepetidasGlobal += repetidas;
+            
+            txtContent += `📌 ${pais.nombre} (Grupo ${pais.grupo})\n`;
+            txtContent += `   Tenidas: ${tenidas} | Repetidas: ${repetidas} | Faltantes: ${faltantes}\n`;
+            
+            let linea1 = "   Números: ";
+            let linea2 = "   Estado:  ";
+            
+            for (let i = 0; i < stickers.length; i++) {
+                const num = i + 1;
+                linea1 += `${num.toString().padStart(2, ' ')} `;
+                
+                if (stickers[i] === 1) linea2 += " T  ";
+                else if (stickers[i] === 2) linea2 += " R  ";
+                else linea2 += " .  ";
+                
+                if ((i + 1) % 10 === 0 && i < 19) {
+                    linea1 += "\n          ";
+                    linea2 += "\n          ";
+                }
+            }
+            
+            txtContent += linea1 + "\n";
+            txtContent += linea2 + "\n";
+            txtContent += "   ( . = Vacío | T = Tengo | R = Repetida )\n";
+            txtContent += "\n";
+        }
+        
+        txtContent += "========================================\n";
+        txtContent += "RESUMEN GLOBAL\n";
+        txtContent += "========================================\n";
+        txtContent += `✅ Total figuritas que TIENES: ${totalTenidasGlobal}\n`;
+        txtContent += `🔁 Total figuritas REPETIDAS: ${totalRepetidasGlobal}\n`;
+        txtContent += `⬜ Total figuritas FALTANTES: ${(paisesDataRaw.length * 20) - totalTenidasGlobal - totalRepetidasGlobal}\n`;
+        txtContent += `📊 Avance: ${Math.round((totalTenidasGlobal / (paisesDataRaw.length * 20)) * 100)}%\n`;
+        txtContent += "========================================\n";
+        
+        const blob = new Blob([txtContent], {type: "text/plain;charset=utf-8"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `panini2026_resumen_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        alert("✅ Archivo TXT exportado correctamente.");
+    }
+
+    // Exportar JSON
+    function exportToJson() {
+        const exportData = {};
+        
+        for (let pais of paisesDataRaw) {
+            const stickers = stickersState[pais.nombre];
+            const paisData = {};
+            
+            for (let i = 0; i < stickers.length; i++) {
+                const numeroCasilla = i + 1;
+                let estadoTexto = stickers[i] === 0 ? "Vacío" : (stickers[i] === 1 ? "Tengo" : "Repetida");
+                paisData[`Nro.${numeroCasilla}`] = {
+                    codigo: stickers[i],
+                    estado: estadoTexto
+                };
+            }
+            
+            exportData[pais.nombre] = {
+                grupo: pais.grupo,
+                figuritas: paisData,
+                resumen: {
+                    total_tenidas: stickers.filter(v => v === 1).length,
+                    total_repetidas: stickers.filter(v => v === 2).length,
+                    total_faltantes: stickers.filter(v => v === 0).length
+                }
+            };
+        }
+        
+        const exportCompleto = {
+            metadata: {
+                fecha_exportacion: new Date().toLocaleString(),
+                album: "Panini FIFA World Cup 2026",
+                total_paises: paisesDataRaw.length,
+                total_figuritas_posibles: paisesDataRaw.length * 20,
+            },
+            datos: exportData
+        };
+        
+        const dataStr = JSON.stringify(exportCompleto, null, 2);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `panini2026_respaldo_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert(`✅ JSON exportado correctamente.`);
+    }
+    
+    function importData(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                let newState = {};
+                
+                if (imported.datos && imported.metadata) {
+                    for (let pais of paisesDataRaw) {
+                        const paisData = imported.datos[pais.nombre];
+                        if (paisData && paisData.figuritas) {
+                            const stickersArray = [];
+                            for (let i = 1; i <= 20; i++) {
+                                const casilla = paisData.figuritas[`Nro.${i}`];
+                                stickersArray.push(casilla?.codigo || 0);
+                            }
+                            newState[pais.nombre] = stickersArray;
+                        } else {
+                            newState[pais.nombre] = Array(20).fill(0);
+                        }
+                    }
+                } else {
+                    for (let pais of paisesDataRaw) {
+                        if (imported[pais.nombre] && Array.isArray(imported[pais.nombre]) && imported[pais.nombre].length === 20) {
+                            newState[pais.nombre] = imported[pais.nombre];
+                        } else {
+                            newState[pais.nombre] = Array(20).fill(0);
+                        }
+                    }
+                }
+                
+                stickersState = newState;
+                saveToLocalStorage();
+                renderAlbum();
+                alert("✅ Datos importados correctamente");
+                document.getElementById("statusMsg").textContent = "📥 Datos cargados exitosamente";
+                setTimeout(() => {
+                    document.getElementById("statusMsg").textContent = "💡 Toca casilla: Vacío → Tengo → Repetida";
+                }, 2000);
+            } catch(err) {
+                alert("❌ Archivo inválido.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function renderAlbum() {
+        const container = document.getElementById("albumTableContainer");
+        if (!container) return;
+        
+        let html = '<table>';
+        html += '<thead>';
+        html += '<tr>';
+        html += '<th>País / Grupo</th>';
+        for (let i = 1; i <= 20; i++) {
+            html += `<th>${i}</th>`;
+        }
+        html += '</tr>';
+        html += '</thead>';
+        html += '<tbody>';
+        
+        for (let pais of paisesDataRaw) {
+            html += `<tr class="country-row" data-pais="${pais.nombre}">`;
+            html += `<td style="font-weight:bold;">${pais.nombre} (${pais.grupo})</td>`;
+            const stickers = stickersState[pais.nombre];
+            for (let num = 0; num < 20; num++) {
+                const estado = stickers[num];
+                let clase = "empty";
+                let simbolo = "◻️";
+                if (estado === 1) {
+                    clase = "have";
+                    simbolo = "✅";
+                } else if (estado === 2) {
+                    clase = "duplicate";
+                    simbolo = "🔁";
+                }
+                html += `<td class="sticker-cell ${clase}" data-pais="${pais.nombre}" data-numero="${num+1}">${simbolo}</td>`;
+            }
+            html += '</table>';
+        }
+        html += '</tbody>';
+        html += '</table>';
+        container.innerHTML = html;
+        attachCellEvents();
+    }
+    
+    function nextState(currentState) {
+        if (currentState === 0) return 1;
+        if (currentState === 1) return 2;
+        return 0;
+    }
+    
+    function attachCellEvents() {
+        const cells = document.querySelectorAll('.sticker-cell');
+        cells.forEach(cell => {
+            cell.removeEventListener('click', cellClickHandler);
+            cell.addEventListener('click', cellClickHandler);
+        });
+    }
+    
+    function cellClickHandler(e) {
+        const cell = e.currentTarget;
+        const pais = cell.getAttribute('data-pais');
+        const numero = parseInt(cell.getAttribute('data-numero'));
+        if (!pais || isNaN(numero)) return;
+        
+        const currentEstado = stickersState[pais][numero-1];
+        const newEstado = nextState(currentEstado);
+        stickersState[pais][numero-1] = newEstado;
+        
+        let simbolo = "";
+        let clase = "";
+        if (newEstado === 1) {
+            simbolo = "✅";
+            clase = "have";
+        } else if (newEstado === 2) {
+            simbolo = "🔁";
+            clase = "duplicate";
+        } else {
+            simbolo = "◻️";
+            clase = "empty";
+        }
+        cell.textContent = simbolo;
+        cell.className = `sticker-cell ${clase}`;
+        
+        saveToLocalStorage();
+        
+        const msgDiv = document.getElementById("statusMsg");
+        if (msgDiv) {
+            let texto = "";
+            if (newEstado === 1) texto = `✅ ${pais} - N°${numero}: Tengo`;
+            else if (newEstado === 2) texto = `🔁 ${pais} - N°${numero}: Repetida`;
+            else texto = `⬜ ${pais} - N°${numero}: Vacío`;
+            msgDiv.textContent = texto;
+            setTimeout(() => {
+                if (document.getElementById("statusMsg") && document.getElementById("statusMsg").textContent === texto) {
+                    document.getElementById("statusMsg").textContent = "💡 Toca casilla: Vacío → Tengo → Repetida";
+                }
+            }, 1500);
+        }
+    }
+    
+    // Inicialización
+    document.addEventListener("DOMContentLoaded", () => {
+        loadFromLocalStorage();
+        renderAlbum();
+        
+        // Modal handlers
+        const modal = document.getElementById("reportModal");
+        document.getElementById("reportBtn").addEventListener("click", showReportModal);
+        document.getElementById("closeModalBtn").addEventListener("click", () => {
+            modal.style.display = "none";
+        });
+        window.addEventListener("click", (e) => {
+            if (e.target === modal) modal.style.display = "none";
+        });
+        document.getElementById("copyReportBtn").addEventListener("click", copyReportToClipboard);
+        document.getElementById("exportImageBtn").addEventListener("click", exportReportAsImage);
+        
+        document.getElementById("exportTxtBtn").addEventListener("click", exportToTxt);
+        document.getElementById("exportJsonBtn").addEventListener("click", exportToJson);
+        
+        const importFileInput = document.getElementById("importFile");
+        document.getElementById("importDataBtn").addEventListener("click", () => {
+            importFileInput.click();
+        });
+        importFileInput.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) {
+                importData(e.target.files[0]);
+                importFileInput.value = '';
+            }
+        });
+    });
+</script>
+</body>
+</html>
